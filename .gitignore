@@ -1,0 +1,44 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# Mac system files
+.DS_Store
+
+# Logs
+*.log
+
+# Data files (IMPORTANT - adjust if needed)
+data/
+*.csv
+*.xlsx
+*.json
+
+# Model checkpoints
+*.pkl
+*.joblib
+*.h5
+*.pt
+
+# Temporary files
+*.tmp
+*.swp
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
