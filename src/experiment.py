@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from data_loader import load_data
@@ -65,6 +66,8 @@ def run_phase_2(X, y, models):
     print("\nPHASE 2: Clean Dataset Scaling")
     print("=" * 60)
 
+    results = []
+
     for frac in SCALING_LEVELS:
         print(f"\nDataset Fraction: {frac}")
         print("-" * 50)
@@ -76,21 +79,37 @@ def run_phase_2(X, y, models):
 
             for seed in range(REPEATS):
                 X_subset, y_subset = get_scaled_subset(X, y, frac, seed)
-
                 model = base_model.__class__(**base_model.get_params())
-
                 acc, f1, auc, _ = evaluate_model(model, X_subset, y_subset)
 
                 acc_list.append(acc)
                 f1_list.append(f1)
                 auc_list.append(auc)
 
+            mean_acc = np.mean(acc_list)
+            mean_f1 = np.mean(f1_list)
+            mean_auc = np.mean(auc_list)
+            auc_std = np.std(auc_list)
+
             print(f"{name}")
-            print(f"  Accuracy: {np.mean(acc_list):.4f}")
-            print(f"  F1 Score: {np.mean(f1_list):.4f}")
-            print(f"  ROC-AUC : {np.mean(auc_list):.4f}")
-            print(f"  AUC Std : {np.std(auc_list):.4f}")
+            print(f"  Accuracy: {mean_acc:.4f}")
+            print(f"  F1 Score: {mean_f1:.4f}")
+            print(f"  ROC-AUC : {mean_auc:.4f}")
+            print(f"  AUC Std : {auc_std:.4f}")
             print("-" * 40)
+
+            results.append({
+                "model": name,
+                "dataset_fraction": frac,
+                "mean_accuracy": mean_acc,
+                "mean_f1": mean_f1,
+                "mean_auc": mean_auc,
+                "auc_std": auc_std
+            })
+
+    df = pd.DataFrame(results)
+    df.to_csv("phase2_clean_scaling_results.csv", index=False)
+    print("\nSaved results to phase2_clean_scaling_results.csv")
 
 def main():
     X, y = load_data()
