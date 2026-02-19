@@ -14,6 +14,10 @@ LABEL_NOISE_RATE = 0.1
 FEATURE_NOISE_STD = 0.05
 WEAK_SAMPLE_FRACTION = 0.2
 
+NOISE_LEVELS = [0.0, 0.1, 0.2, 0.3]
+FEATURE_NOISE_LEVELS = [0.0, 0.02, 0.05, 0.1]
+WEAK_SAMPLE_LEVELS = [0.0, 0.1, 0.2, 0.3]
+
 
 def evaluate_model(model, X, y):
     accuracies = []
@@ -78,9 +82,6 @@ def run_phase_2(X, y, models):
     results = []
 
     for frac in SCALING_LEVELS:
-        print(f"\nDataset Fraction: {frac}")
-        print("-" * 50)
-
         for name, base_model in models.items():
             acc_list = []
             f1_list = []
@@ -95,43 +96,26 @@ def run_phase_2(X, y, models):
                 f1_list.append(f1)
                 auc_list.append(auc)
 
-            mean_acc = np.mean(acc_list)
-            mean_f1 = np.mean(f1_list)
-            mean_auc = np.mean(auc_list)
-            auc_std = np.std(auc_list)
-
-            print(f"{name}")
-            print(f"  Accuracy: {mean_acc:.4f}")
-            print(f"  F1 Score: {mean_f1:.4f}")
-            print(f"  ROC-AUC : {mean_auc:.4f}")
-            print(f"  AUC Std : {auc_std:.4f}")
-            print("-" * 40)
-
             results.append({
                 "phase": "clean_scaling",
                 "model": name,
                 "dataset_fraction": frac,
-                "mean_accuracy": mean_acc,
-                "mean_f1": mean_f1,
-                "mean_auc": mean_auc,
-                "auc_std": auc_std
+                "mean_accuracy": np.mean(acc_list),
+                "mean_f1": np.mean(f1_list),
+                "mean_auc": np.mean(auc_list),
+                "auc_std": np.std(auc_list)
             })
 
-    df = pd.DataFrame(results)
-    df.to_csv("phase2_clean_scaling_results.csv", index=False)
-    print("\nSaved results to phase2_clean_scaling_results.csv")
+    pd.DataFrame(results).to_csv("phase2_clean_scaling_results.csv", index=False)
 
 
 def run_phase_3(X, y, models):
-    print("\nPHASE 3: Scaling Under Noise")
+    print("\nPHASE 3: Fixed Combined Noise")
     print("=" * 60)
 
     results = []
 
     for frac in SCALING_LEVELS:
-        print(f"\nDataset Fraction: {frac}")
-        print("-" * 50)
-
         for name, base_model in models.items():
             acc_list = []
             f1_list = []
@@ -167,34 +151,142 @@ def run_phase_3(X, y, models):
                 f1_list.append(f1)
                 auc_list.append(auc)
 
-            mean_acc = np.mean(acc_list)
-            mean_f1 = np.mean(f1_list)
-            mean_auc = np.mean(auc_list)
-            auc_std = np.std(auc_list)
-
-            print(f"{name}")
-            print(f"  Accuracy: {mean_acc:.4f}")
-            print(f"  F1 Score: {mean_f1:.4f}")
-            print(f"  ROC-AUC : {mean_auc:.4f}")
-            print(f"  AUC Std : {auc_std:.4f}")
-            print("-" * 40)
-
             results.append({
-                "phase": "noisy_scaling",
+                "phase": "fixed_combined_noise",
                 "model": name,
                 "dataset_fraction": frac,
-                "mean_accuracy": mean_acc,
-                "mean_f1": mean_f1,
-                "mean_auc": mean_auc,
-                "auc_std": auc_std,
-                "label_noise": LABEL_NOISE_RATE,
-                "feature_noise_std": FEATURE_NOISE_STD,
-                "weak_fraction": WEAK_SAMPLE_FRACTION
+                "mean_accuracy": np.mean(acc_list),
+                "mean_f1": np.mean(f1_list),
+                "mean_auc": np.mean(auc_list),
+                "auc_std": np.std(auc_list)
             })
 
-    df = pd.DataFrame(results)
-    df.to_csv("phase3_noisy_scaling_results.csv", index=False)
-    print("\nSaved results to phase3_noisy_scaling_results.csv")
+    pd.DataFrame(results).to_csv("phase3_fixed_noise_results.csv", index=False)
+
+
+def run_phase_4_label_noise(X, y, models):
+    results = []
+
+    for noise_rate in NOISE_LEVELS:
+        for frac in SCALING_LEVELS:
+            for name, base_model in models.items():
+                acc_list = []
+                f1_list = []
+                auc_list = []
+
+                for seed in range(REPEATS):
+                    X_subset, y_subset = get_scaled_subset(X, y, frac, seed)
+
+                    if noise_rate > 0:
+                        y_subset = apply_label_noise(
+                            y_subset,
+                            noise_rate=noise_rate,
+                            random_state=seed
+                        )
+
+                    model = base_model.__class__(**base_model.get_params())
+                    acc, f1, auc, _ = evaluate_model(model, X_subset, y_subset)
+
+                    acc_list.append(acc)
+                    f1_list.append(f1)
+                    auc_list.append(auc)
+
+                results.append({
+                    "phase": "label_noise_interaction",
+                    "model": name,
+                    "dataset_fraction": frac,
+                    "label_noise": noise_rate,
+                    "mean_accuracy": np.mean(acc_list),
+                    "mean_f1": np.mean(f1_list),
+                    "mean_auc": np.mean(auc_list),
+                    "auc_std": np.std(auc_list)
+                })
+
+    pd.DataFrame(results).to_csv("phase4_label_noise_results.csv", index=False)
+
+
+def run_phase_4_feature_noise(X, y, models):
+    results = []
+
+    for noise_std in FEATURE_NOISE_LEVELS:
+        for frac in SCALING_LEVELS:
+            for name, base_model in models.items():
+                acc_list = []
+                f1_list = []
+                auc_list = []
+
+                for seed in range(REPEATS):
+                    X_subset, y_subset = get_scaled_subset(X, y, frac, seed)
+
+                    if noise_std > 0:
+                        X_subset = apply_feature_noise(
+                            X_subset,
+                            noise_std=noise_std,
+                            random_state=seed
+                        )
+
+                    model = base_model.__class__(**base_model.get_params())
+                    acc, f1, auc, _ = evaluate_model(model, X_subset, y_subset)
+
+                    acc_list.append(acc)
+                    f1_list.append(f1)
+                    auc_list.append(auc)
+
+                results.append({
+                    "phase": "feature_noise_interaction",
+                    "model": name,
+                    "dataset_fraction": frac,
+                    "feature_noise_std": noise_std,
+                    "mean_accuracy": np.mean(acc_list),
+                    "mean_f1": np.mean(f1_list),
+                    "mean_auc": np.mean(auc_list),
+                    "auc_std": np.std(auc_list)
+                })
+
+    pd.DataFrame(results).to_csv("phase4_feature_noise_results.csv", index=False)
+
+
+def run_phase_4_weak_samples(X, y, models):
+    results = []
+
+    for weak_fraction in WEAK_SAMPLE_LEVELS:
+        for frac in SCALING_LEVELS:
+            for name, base_model in models.items():
+                acc_list = []
+                f1_list = []
+                auc_list = []
+
+                for seed in range(REPEATS):
+                    X_subset, y_subset = get_scaled_subset(X, y, frac, seed)
+
+                    if weak_fraction > 0:
+                        X_subset, y_subset = apply_weak_samples(
+                            X_subset,
+                            y_subset,
+                            weak_fraction=weak_fraction,
+                            noise_std=0.01,
+                            random_state=seed
+                        )
+
+                    model = base_model.__class__(**base_model.get_params())
+                    acc, f1, auc, _ = evaluate_model(model, X_subset, y_subset)
+
+                    acc_list.append(acc)
+                    f1_list.append(f1)
+                    auc_list.append(auc)
+
+                results.append({
+                    "phase": "weak_sample_interaction",
+                    "model": name,
+                    "dataset_fraction": frac,
+                    "weak_fraction": weak_fraction,
+                    "mean_accuracy": np.mean(acc_list),
+                    "mean_f1": np.mean(f1_list),
+                    "mean_auc": np.mean(auc_list),
+                    "auc_std": np.std(auc_list)
+                })
+
+    pd.DataFrame(results).to_csv("phase4_weak_sample_results.csv", index=False)
 
 
 def main():
@@ -204,6 +296,9 @@ def main():
     run_phase_1(X, y, models)
     run_phase_2(X, y, models)
     run_phase_3(X, y, models)
+    run_phase_4_label_noise(X, y, models)
+    run_phase_4_feature_noise(X, y, models)
+    run_phase_4_weak_samples(X, y, models)
 
 
 if __name__ == "__main__":
