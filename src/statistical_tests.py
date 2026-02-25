@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t
 
-REPEATS = 10
-
 INPUT_FILE = os.path.join("results", "phase4_label_noise_results.csv")
 OUTPUT_FILE = os.path.join("results", "phase7_statistical_tests.csv")
 
@@ -17,7 +15,7 @@ def summary_t_test(mean1, std1, mean2, std2, n):
     p_value = 2 * (1 - t.cdf(abs(t_stat), df))
     return t_stat, p_value
 
-def run_statistical_tests():
+def run_statistical_tests(repeats):
     df = pd.read_csv(INPUT_FILE)
     results = []
 
@@ -51,7 +49,7 @@ def run_statistical_tests():
                 t_stat, p = summary_t_test(
                     mean_clean, std_clean,
                     mean_noisy, std_noisy,
-                    REPEATS
+                    repeats
                 )
                 results.append({
                     "test_type": "clean_vs_noise",
@@ -87,7 +85,7 @@ def run_statistical_tests():
             t_stat, p = summary_t_test(
                 mean_large, std_large,
                 mean_small, std_small,
-                REPEATS
+                repeats
             )
             results.append({
                 "test_type": "scaling_effect",
@@ -123,7 +121,7 @@ def run_statistical_tests():
                 t_stat, p = summary_t_test(
                     mean_a, std_a,
                     mean_b, std_b,
-                    REPEATS
+                    repeats
                 )
                 results.append({
                     "test_type": "model_comparison",
