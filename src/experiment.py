@@ -1,16 +1,23 @@
+import os
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
+
 from data_loader import load_data
 from models import get_models
 from noise import apply_label_noise, apply_feature_noise, apply_weak_samples
+from visualization import run_visualization_pipeline
+
 
 REPEATS = 10
 TEST_SIZE = 0.2
 SCALING_LEVELS = [0.2, 0.4, 0.6, 0.8, 1.0]
+
+RUN_EXPERIMENTS = True
+RUN_VISUALIZATION = True
 
 LABEL_NOISE_RATE = 0.1
 FEATURE_NOISE_STD = 0.05
@@ -19,6 +26,11 @@ WEAK_SAMPLE_FRACTION = 0.2
 NOISE_LEVELS = [0.0, 0.1, 0.2, 0.3]
 FEATURE_NOISE_LEVELS = [0.0, 0.02, 0.05, 0.1]
 WEAK_SAMPLE_LEVELS = [0.0, 0.1, 0.2, 0.3]
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 def evaluate_model(model, X, y):
@@ -107,7 +119,10 @@ def run_phase_2(scaled_data, models):
                 "auc_std": auc_std
             })
 
-    pd.DataFrame(results).to_csv("phase2_clean_scaling_results.csv", index=False)
+    pd.DataFrame(results).to_csv(
+        f"{RESULTS_DIR}/phase2_clean_scaling_results.csv", index=False
+    )
+
     print("PHASE 2 COMPLETE")
 
 
@@ -141,7 +156,10 @@ def run_phase_3(scaled_data, models):
                 "auc_std": auc_std
             })
 
-    pd.DataFrame(results).to_csv("phase3_fixed_noise_results.csv", index=False)
+    pd.DataFrame(results).to_csv(
+        f"{RESULTS_DIR}/phase3_fixed_noise_results.csv", index=False
+    )
+
     print("PHASE 3 COMPLETE")
 
 
@@ -183,7 +201,10 @@ def run_phase_4_generic(
                     "auc_std": auc_std
                 })
 
-    pd.DataFrame(results).to_csv(output_filename, index=False)
+    pd.DataFrame(results).to_csv(
+        f"{RESULTS_DIR}/{output_filename}", index=False
+    )
+
     print("PHASE 4 COMPLETE")
 
 
@@ -203,7 +224,7 @@ def run_phase_5_analysis(input_csv, output_csv, noise_column):
     print(f"\nPHASE 5: Reliability Analysis ({noise_column})")
     print("=" * 60)
 
-    df = pd.read_csv(input_csv)
+    df = pd.read_csv(f"{RESULTS_DIR}/{input_csv}")
 
     df["cv"] = df["auc_std"] / df["mean_auc"]
     df["stability_score"] = 1 - df["cv"]
@@ -246,68 +267,73 @@ def run_phase_5_analysis(input_csv, output_csv, noise_column):
         (df["scaling_gain"] < 0)
     )
 
-    df.to_csv(output_csv, index=False)
+    df.to_csv(f"{RESULTS_DIR}/{output_csv}", index=False)
+
     print("PHASE 5 COMPLETE")
 
 
 def main():
-    X, y = load_data()
-    models = get_models()
+    if RUN_EXPERIMENTS:
+        X, y = load_data()
+        models = get_models()
 
-    for name, model in models.items():
-        if isinstance(model, RandomForestClassifier):
-            model.set_params(n_jobs=-1)
+        for name, model in models.items():
+            if isinstance(model, RandomForestClassifier):
+                model.set_params(n_jobs=-1)
 
-    scaled_data = precompute_scaled_subsets(X, y)
+        scaled_data = precompute_scaled_subsets(X, y)
 
-    run_phase_1(X, y, models)
-    run_phase_2(scaled_data, models)
-    run_phase_3(scaled_data, models)
+        run_phase_1(X, y, models)
+        run_phase_2(scaled_data, models)
+        run_phase_3(scaled_data, models)
 
-    run_phase_4_generic(
-        scaled_data,
-        models,
-        NOISE_LEVELS,
-        "label_noise",
-        label_noise_wrapper,
-        "phase4_label_noise_results.csv"
-    )
+        run_phase_4_generic(
+            scaled_data,
+            models,
+            NOISE_LEVELS,
+            "label_noise",
+            label_noise_wrapper,
+            "phase4_label_noise_results.csv"
+        )
 
-    run_phase_4_generic(
-        scaled_data,
-        models,
-        FEATURE_NOISE_LEVELS,
-        "feature_noise_std",
-        feature_noise_wrapper,
-        "phase4_feature_noise_results.csv"
-    )
+        run_phase_4_generic(
+            scaled_data,
+            models,
+            FEATURE_NOISE_LEVELS,
+            "feature_noise_std",
+            feature_noise_wrapper,
+            "phase4_feature_noise_results.csv"
+        )
 
-    run_phase_4_generic(
-        scaled_data,
-        models,
-        WEAK_SAMPLE_LEVELS,
-        "weak_fraction",
-        weak_sample_wrapper,
-        "phase4_weak_sample_results.csv"
-    )
+        run_phase_4_generic(
+            scaled_data,
+            models,
+            WEAK_SAMPLE_LEVELS,
+            "weak_fraction",
+            weak_sample_wrapper,
+            "phase4_weak_sample_results.csv"
+        )
 
-    run_phase_5_analysis(
-        "phase4_label_noise_results.csv",
-        "phase5_label_noise_analysis.csv",
-        "label_noise"
-    )
+        run_phase_5_analysis(
+            "phase4_label_noise_results.csv",
+            "phase5_label_noise_analysis.csv",
+            "label_noise"
+        )
 
-    run_phase_5_analysis(
-        "phase4_feature_noise_results.csv",
-        "phase5_feature_noise_analysis.csv",
-        "feature_noise_std"
-    )
+        run_phase_5_analysis(
+            "phase4_feature_noise_results.csv",
+            "phase5_feature_noise_analysis.csv",
+            "feature_noise_std"
+        )
 
-    run_phase_5_analysis(
-        "phase4_weak_sample_results.csv",
-        "phase5_weak_sample_analysis.csv",
-        "weak_fraction"
-    )
+        run_phase_5_analysis(
+            "phase4_weak_sample_results.csv",
+            "phase5_weak_sample_analysis.csv",
+            "weak_fraction"
+        )
+
+    if RUN_VISUALIZATION:
+        run_visualization_pipeline()
 
 
 if __name__ == "__main__":
