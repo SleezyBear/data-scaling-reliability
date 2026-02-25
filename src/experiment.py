@@ -16,8 +16,9 @@ REPEATS = 10
 TEST_SIZE = 0.2
 SCALING_LEVELS = [0.2, 0.4, 0.6, 0.8, 1.0]
 
-RUN_EXPERIMENTS = True
-RUN_VISUALIZATION = True
+RUN_EXPERIMENTS = False
+RUN_VISUALIZATION = False
+RUN_STATISTICAL_TESTS = True
 
 LABEL_NOISE_RATE = 0.1
 FEATURE_NOISE_STD = 0.05
@@ -334,6 +335,9 @@ def main():
 
     if RUN_VISUALIZATION:
         run_visualization_pipeline()
+    if RUN_STATISTICAL_TESTS:
+        from statistical_tests import run_statistical_tests
+        run_statistical_tests()
 
 
 if __name__ == "__main__":
