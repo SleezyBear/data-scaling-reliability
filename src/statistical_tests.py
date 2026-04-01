@@ -3,8 +3,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t
 
-INPUT_FILE = os.path.join("results", "phase4_label_noise_results.csv")
-OUTPUT_FILE = os.path.join("results", "phase7_statistical_tests.csv")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+
+INPUT_FILE = os.path.join(RESULTS_DIR, "phase4_label_noise_results.csv")
+OUTPUT_FILE = os.path.join(RESULTS_DIR, "phase7_statistical_tests.csv")
 
 def summary_t_test(mean1, std1, mean2, std2, n):
     se = np.sqrt((std1**2 / n) + (std2**2 / n))
@@ -134,4 +137,4 @@ def run_statistical_tests(repeats):
                 })
 
     pd.DataFrame(results).to_csv(OUTPUT_FILE, index=False)
-    print("Phase 7 statistical testing complete.")
+    print("Phase 6 statistical testing complete.")

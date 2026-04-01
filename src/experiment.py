@@ -32,6 +32,7 @@ NOISE_LEVELS = [0.0, 0.1, 0.2, 0.3]
 FEATURE_NOISE_LEVELS = [0.0, 0.02, 0.05, 0.1]
 WEAK_SAMPLE_LEVELS = [0.0, 0.1, 0.2, 0.3]
 
+BREAKDOWN_THRESHOLD = 0.05
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
@@ -275,29 +276,62 @@ def main():
             print(f"Results saved to: {phase4_path}\n")
 
         # =========================
-    # PHASE 5
-    # =========================
-    if RUN_STATISTICAL_TESTS:
+        # PHASE 5
+        # =========================
         print("==============================")
-        print("PHASE 5: Statistical Testing")
+        print("PHASE 5: Noise Analysis (Enrichment)")
         print("==============================")
 
-        run_statistical_tests(REPEATS)
+        phase5_specs = [
+            ("phase4_label_noise_results.csv", "label_noise", "phase5_label_noise_analysis.csv"),
+            ("phase4_feature_noise_results.csv", "feature_noise_std", "phase5_feature_noise_analysis.csv"),
+            ("phase4_weak_sample_results.csv", "weak_fraction", "phase5_weak_sample_analysis.csv"),
+        ]
 
-        print("PHASE 5 COMPLETE")
-        print(f"Results saved to: {RESULTS_DIR}/phase7_statistical_tests.csv\n")
+        for input_file, noise_column, output_file in phase5_specs:
+            df_p4 = pd.read_csv(f"{RESULTS_DIR}/{input_file}")
+
+            df_p4["cv"] = df_p4["auc_std"] / df_p4["mean_auc"]
+
+            baseline = (
+                df_p4[df_p4[noise_column] == 0.0][["model", "dataset_fraction", "mean_auc"]]
+                .rename(columns={"mean_auc": "baseline_auc"})
+            )
+            df_p4 = df_p4.merge(baseline, on=["model", "dataset_fraction"], how="left")
+            df_p4["relative_auc_drop"] = (df_p4["baseline_auc"] - df_p4["mean_auc"]) / df_p4["baseline_auc"]
+            df_p4["breakdown_flag"] = (df_p4["relative_auc_drop"] > BREAKDOWN_THRESHOLD).astype(int)
+            df_p4 = df_p4.drop(columns=["baseline_auc"])
+
+            out_path = f"{RESULTS_DIR}/{output_file}"
+            df_p4.to_csv(out_path, index=False)
+            print(f"  Saved: {output_file}")
+
+        print("PHASE 5 COMPLETE\n")
 
     # =========================
     # PHASE 6
     # =========================
+    if RUN_STATISTICAL_TESTS:
+        print("==============================")
+        print("PHASE 6: Statistical Testing")
+        print("==============================")
+
+        run_statistical_tests(REPEATS)
+
+        print("PHASE 6 COMPLETE")
+        print(f"Results saved to: {RESULTS_DIR}/phase7_statistical_tests.csv\n")
+
+    # =========================
+    # PHASE 7
+    # =========================
     if RUN_VISUALIZATION:
         print("==============================")
-        print("PHASE 6: Visualization")
+        print("PHASE 7: Visualization")
         print("==============================")
 
         run_visualization_pipeline()
 
-        print("PHASE 6 COMPLETE")
+        print("PHASE 7 COMPLETE")
         print(f"Plots saved to: {RESULTS_DIR}/plots/\n")
 
 if __name__ == "__main__":
