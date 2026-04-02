@@ -3,6 +3,7 @@ import glob
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+
 def find_data_file(data_dir=None):
     if data_dir is None:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -17,6 +18,7 @@ def find_data_file(data_dir=None):
         raise ValueError(f"Multiple CSV files found in '{data_dir}': {names}. Please keep only one.")
 
     return csv_files[0]
+
 
 def load_data(path=None):
     if path is None:

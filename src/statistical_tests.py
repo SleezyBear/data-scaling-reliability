@@ -9,6 +9,7 @@ RESULTS_DIR = os.path.join(BASE_DIR, "results")
 INPUT_FILE = os.path.join(RESULTS_DIR, "phase4_label_noise_results.csv")
 OUTPUT_FILE = os.path.join(RESULTS_DIR, "phase7_statistical_tests.csv")
 
+
 def summary_t_test(mean1, std1, mean2, std2, n):
     se = np.sqrt((std1**2 / n) + (std2**2 / n))
     if se == 0:
@@ -17,6 +18,7 @@ def summary_t_test(mean1, std1, mean2, std2, n):
     df = 2 * n - 2
     p_value = 2 * (1 - t.cdf(abs(t_stat), df))
     return t_stat, p_value
+
 
 def run_statistical_tests(repeats):
     df = pd.read_csv(INPUT_FILE)
@@ -37,6 +39,7 @@ def run_statistical_tests(repeats):
                 continue
             mean_clean = clean_row["mean_auc"].values[0]
             std_clean = clean_row["auc_std"].values[0]
+
             for noise in noise_levels:
                 if noise == 0.0:
                     continue
@@ -137,4 +140,4 @@ def run_statistical_tests(repeats):
                 })
 
     pd.DataFrame(results).to_csv(OUTPUT_FILE, index=False)
-    print("Phase 6 statistical testing complete.")
+    print("Statistical testing complete.")
